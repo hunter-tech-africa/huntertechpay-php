@@ -1,0 +1,49 @@
+{
+    "name": "huntertechpay/sdk",
+    "description": "Official PHP SDK for HunterTechPay mobile money payments API",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "huntertechpay",
+        "mobile money",
+        "payment",
+        "africa"
+    ],
+    "authors": [
+        {
+            "name": "HunterTechPay",
+            "email": "support@huntertechpay.com",
+            "homepage": "https://huntertechpay.com"
+        }
+    ],
+    "homepage": "https://huntertechpay.com/merchant-api/documentation",
+    "support": {
+        "issues": "https://github.com/hunter-tech-africa/huntertechpay-php/issues",
+        "source": "https://github.com/hunter-tech-africa/huntertechpay-php",
+        "docs": "https://huntertechpay.com/merchant-api/documentation"
+    },
+    "require": {
+        "php": ">=7.4",
+        "ext-json": "*",
+        "ext-curl": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0",
+        "squizlabs/php_codesniffer": "^3.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "HunterTechPay\\": "src/"
+        },
+        "files": [
+            "HunterTechPay.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "HunterTechPay\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
