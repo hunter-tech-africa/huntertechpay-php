@@ -2,7 +2,7 @@
 /**
  * HunterTechPay SDK for PHP
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @author HunterTechPay
  * @license MIT
  *
@@ -31,14 +31,119 @@
 
 class HunterTechPayError extends Exception
 {
+    /**
+     * @var string Original error message from API (unmodified)
+     */
+    public $apiMessage;
+
+    /**
+     * @var int HTTP status code
+     */
     public $statusCode;
+
+    /**
+     * @var string Error code from API
+     */
+    public $errorCode;
+
+    /**
+     * @var array Complete API response data
+     */
     public $data;
 
-    public function __construct($message, $statusCode = 0, $data = null)
-    {
+    /**
+     * @var string Request ID for tracing
+     */
+    public $requestId;
+
+    /**
+     * Create a new HunterTechPayError instance
+     *
+     * @param string $message Error message
+     * @param int $statusCode HTTP status code
+     * @param array|null $data Complete API response data
+     * @param string|null $apiMessage Original API message (unmodified)
+     * @param string|null $errorCode Error code from API
+     * @param string|null $requestId Request ID for tracing
+     */
+    public function __construct(
+        $message,
+        $statusCode = 0,
+        $data = null,
+        $apiMessage = null,
+        $errorCode = null,
+        $requestId = null
+    ) {
         parent::__construct($message);
         $this->statusCode = $statusCode;
-        $this->data = $data;
+        $this->data = $data ?: [];
+        $this->apiMessage = $apiMessage ?: $message;
+        $this->errorCode = $errorCode;
+        $this->requestId = $requestId;
+    }
+
+    /**
+     * Convert exception to array format for logging
+     *
+     * @return array Complete exception details
+     */
+    public function toArray()
+    {
+        return [
+            'error_type' => get_class($this),
+            'message' => $this->getMessage(),
+            'api_message' => $this->apiMessage,
+            'status_code' => $this->statusCode,
+            'error_code' => $this->errorCode,
+            'request_id' => $this->requestId,
+            'data' => $this->data
+        ];
+    }
+
+    /**
+     * Get specific detail from error data
+     *
+     * @param string $key The key to retrieve
+     * @param mixed $default Default value if key not found
+     * @return mixed The value or default
+     */
+    public function getDetail($key, $default = null)
+    {
+        return isset($this->data[$key]) ? $this->data[$key] : $default;
+    }
+
+    /**
+     * Get string representation with all details
+     *
+     * @return string
+     */
+    public function __toString()
+    {
+        $parts = [$this->getMessage()];
+
+        if ($this->statusCode) {
+            $parts[] = "Status: {$this->statusCode}";
+        }
+
+        if ($this->errorCode) {
+            $parts[] = "Code: {$this->errorCode}";
+        }
+
+        if ($this->requestId) {
+            $parts[] = "Request ID: {$this->requestId}";
+        }
+
+        // Add additional error details from API response
+        if (!empty($this->data)) {
+            $excluded = ['detail', 'message', 'error', 'error_code', 'error_message', 'code'];
+            $extraDetails = array_diff_key($this->data, array_flip($excluded));
+
+            if (!empty($extraDetails)) {
+                $parts[] = "Details: " . json_encode($extraDetails);
+            }
+        }
+
+        return implode(' | ', $parts);
     }
 }
 
@@ -149,8 +254,31 @@ class HunterTechPay
         $data = json_decode($response, true);
 
         if ($httpCode >= 400) {
-            $message = $data['message'] ?? $data['detail'] ?? 'API request failed';
-            throw new HunterTechPayError($message, $httpCode, $data);
+            // Extract original API message (unmodified)
+            $apiMessage = $data['detail'] ?? $data['message'] ?? $data['error'] ?? $data['error_message'] ?? '';
+            $message = $apiMessage ?: 'API request failed';
+
+            // Extract error code from API
+            $errorCode = $data['error_code'] ?? $data['code'] ?? null;
+
+            // Extract request ID from response headers (if available in data)
+            $requestId = $data['request_id'] ?? null;
+
+            // Store complete API response including raw response if JSON parsing failed
+            if ($data === null && !empty($response)) {
+                $data = ['raw_response' => substr($response, 0, 1000)];
+                $apiMessage = $response;
+                $message = "HTTP {$httpCode}: {$response}";
+            }
+
+            throw new HunterTechPayError(
+                $message,
+                $httpCode,
+                $data,
+                $apiMessage,
+                $errorCode,
+                $requestId
+            );
         }
 
         return $data;
